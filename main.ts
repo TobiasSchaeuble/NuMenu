@@ -14,6 +14,8 @@ const DEFAULT_SETTINGS: PluginSettings = {
 
 const VIEW_TYPE_CUSTOM = 'custom-view';
 
+let currentFolderPath = "";
+
 class CustomView extends ItemView {
     constructor(leaf: WorkspaceLeaf, private plugin: MyPlugin) {
         super(leaf);
@@ -24,7 +26,7 @@ class CustomView extends ItemView {
     }
 
     getDisplayText() {
-        return 'Custom View';
+        return 'Real Play Game';
     }
 
     async onOpen() {
@@ -35,18 +37,16 @@ class CustomView extends ItemView {
         const selectedFolder = this.plugin.settings.selectedFolder;
 
         // Fetch and display folder contents
-        const folderContents = await this.getFolderContents(selectedFolder);
-        folderContents.forEach(content => {
-            const item = container.createDiv({ cls: 'item' });
-            item.setText(content);
-        });
+        await this.getFolderContentsAndPrint(selectedFolder);
     }
 
     async onClose() {
         // Cleanup if necessary
     }
 
-    async getFolderContents(folderPath: string): Promise<string[]> {
+	
+
+    async getFolderContentsAndPrint(folderPath: string): Promise<void> {
         return new Promise((resolve, reject) => {
             const fullPath = this.app.vault.adapter.basePath + path.resolve(folderPath);
             console.log(`Accessing folder: ${fullPath}`);
@@ -59,7 +59,29 @@ class CustomView extends ItemView {
                 const visibleItems = files
                     .filter(dirent => !dirent.name.startsWith('.'))
                     .map(dirent => dirent.name);
-                resolve(visibleItems);
+                
+                // Clear container and display contents
+                const container = this.containerEl.children[1];
+                container.empty();
+                visibleItems.forEach(itemName => {
+                    const item = container.createDiv({ cls: 'item' });
+                    item.setText(itemName);
+                    
+                    // Make item clickable
+                    item.style.cursor = 'pointer';
+                    
+                    // Add click event listener
+                    item.addEventListener('click', async () => {
+                        // Clear previous subfolder contents
+                        // container.querySelectorAll('.item').forEach(item => item.remove());
+                        // container.empty();
+
+                        const subfolderContents = await this.getFolderContentsAndPrint(currentFolderPath+itemName);
+						currentFolderPath += itemName + "/";
+                    });
+                });
+                
+                resolve();
             });
         });
     }
