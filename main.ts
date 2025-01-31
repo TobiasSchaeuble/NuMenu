@@ -15,9 +15,9 @@ const DEFAULT_SETTINGS: PluginSettings = {
 
 const VIEW_TYPE_CUSTOM = 'custom-view';
 
-let currentFolderPath = "";
-
 class CustomView extends ItemView {
+    private currentFolderPath: string = "";
+
     constructor(leaf: WorkspaceLeaf, private plugin: MyPlugin) {
         super(leaf);
     }
@@ -31,9 +31,27 @@ class CustomView extends ItemView {
     }
 
     async onOpen() {
-        const container = this.containerEl.children[1];
-        container.empty();
-        container.addClass('rpg-view-content');
+        const headerContainer = this.containerEl.children[0];
+        const navigationContainer = headerContainer.children[0];
+
+        console.log(`Container: `, headerContainer);
+        // container.empty();
+        // container.addClass('rpg-view-content');
+
+        // Add a 'Back' button
+        const backButton = navigationContainer.createEl('button', { text: '<' });
+        backButton.addEventListener('click', () => this.navigateBack());
+
+        // console.log(`Clear for `, this.currentFolderPath);
+
+        
+
+        // Handle backspace key
+        this.registerDomEvent(document, 'keydown', (evt: KeyboardEvent) => {
+            if (evt.key === 'Backspace') {
+                this.navigateBack();
+            }
+        });
 
         // Use selected folder from settings
         const selectedFolder = this.plugin.settings.selectedFolder;
@@ -45,8 +63,6 @@ class CustomView extends ItemView {
     async onClose() {
         // Cleanup if necessary
     }
-
-	
 
     async getFolderContentsAndPrint(folderPath: string): Promise<void> {
         return new Promise((resolve, reject) => {
@@ -65,7 +81,14 @@ class CustomView extends ItemView {
                 // Clear container and display contents
                 const container = this.containerEl.children[1];
                 container.empty();
+
+
+                
+
+                
                 container.addClass('rpg-view-content');
+
+
                 visibleItems.forEach(itemName => {
                     const item = container.createDiv({ cls: 'rpg-item' });
 
@@ -89,14 +112,27 @@ class CustomView extends ItemView {
 
                     // Add click event listener
                     item.addEventListener('click', async () => {
-                        const subfolderContents = await this.getFolderContentsAndPrint(currentFolderPath+itemName);
-						currentFolderPath += itemName + "/";
+                        // Update the current folder path
+                        this.currentFolderPath += itemName + "/";
+                        const subfolderContents = await this.getFolderContentsAndPrint(this.currentFolderPath);
                     });
                 });
                 
                 resolve();
             });
         });
+    }
+
+    private navigateBack() {
+        if (this.currentFolderPath) {
+            // Remove the last folder from the path
+            const pathParts = this.currentFolderPath.split('/').filter(part => part);
+            pathParts.pop();
+            this.currentFolderPath = pathParts.join('/') + '/';
+
+            // Refresh the folder view
+            this.getFolderContentsAndPrint(this.currentFolderPath);
+        }
     }
 }
 

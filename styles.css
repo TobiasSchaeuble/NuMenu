@@ -1,3 +1,11 @@
+.view-header-nav-buttons{
+    display: none;
+}
+
+.view-header-left button{
+    box-shadow: none;
+}
+
 .rpg-view-content{
     display: flex;
     justify-content: space-around;
