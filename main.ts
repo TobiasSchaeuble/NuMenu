@@ -1,6 +1,7 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, ItemView } from 'obsidian';
 import * as fs from 'fs';
 import * as path from 'path';
+import emojiRegex from 'emoji-regex';
 
 // Remember to rename these classes and interfaces!
 
@@ -32,6 +33,7 @@ class CustomView extends ItemView {
     async onOpen() {
         const container = this.containerEl.children[1];
         container.empty();
+        container.addClass('rpg-view-content');
 
         // Use selected folder from settings
         const selectedFolder = this.plugin.settings.selectedFolder;
@@ -63,19 +65,30 @@ class CustomView extends ItemView {
                 // Clear container and display contents
                 const container = this.containerEl.children[1];
                 container.empty();
+                container.addClass('rpg-view-content');
                 visibleItems.forEach(itemName => {
-                    const item = container.createDiv({ cls: 'item' });
-                    item.setText(itemName);
-                    
+                    const item = container.createDiv({ cls: 'rpg-item' });
+
+                    // Use emoji-regex to check if the name starts with an emoji
+                    const regex = emojiRegex();
+                    const emojiMatch = regex.exec(itemName);
+                    if (emojiMatch && emojiMatch.index === 0) {
+                        // Display only the emoji
+                        const emojiDiv = item.createDiv({ cls: 'rpg-item-emoji' });
+                        emojiDiv.setText(emojiMatch[0]);
+                        // Display the full name without the emoji below
+                        const nameDiv = item.createDiv({ cls: 'rpg-item-name' });
+                        nameDiv.setText(itemName.slice(emojiMatch[0].length));
+                    } else {
+                        const nameDiv = item.createDiv({ cls: 'rpg-item-name' });
+                        nameDiv.setText(itemName);
+                    }
+
                     // Make item clickable
                     item.style.cursor = 'pointer';
-                    
+
                     // Add click event listener
                     item.addEventListener('click', async () => {
-                        // Clear previous subfolder contents
-                        // container.querySelectorAll('.item').forEach(item => item.remove());
-                        // container.empty();
-
                         const subfolderContents = await this.getFolderContentsAndPrint(currentFolderPath+itemName);
 						currentFolderPath += itemName + "/";
                     });
@@ -93,6 +106,13 @@ export default class MyPlugin extends Plugin {
 
     async onload() {
         await this.loadSettings();
+
+        // Manually add the CSS file to the document head
+        // const link = document.createElement('link');
+        // link.rel = 'stylesheet';
+        // link.type = 'text/css';
+        // link.href = this.app.vault.adapter.basePath + '/styles.css';
+        // document.head.appendChild(link);
 
         this.registerView(
             VIEW_TYPE_CUSTOM,

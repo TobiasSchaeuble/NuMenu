@@ -1,8 +1,22 @@
-/*
+.rpg-view-content{
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-wrap: wrap;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.rpg-item{
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    width: auto;
+    min-width: 25%;
+}
 
-If your plugin does not need CSS, delete this file.
+.rpg-item-emoji{
+    font-size: 500%;
+}
 
-*/
+.rpg-item-name{
+    font-size: 100%;
+}
