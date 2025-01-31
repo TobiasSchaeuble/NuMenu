@@ -82,15 +82,11 @@ class ObsidianRPGView extends ItemView {
             // console.log("02", this.app.vault);
 
 
-            const basePath = (this.app.vault.adapter as any).basePath
+            let fullPath = (this.app.vault.adapter as any).basePath + "/" + folderPath
 
-            console.log("03", basePath);
-
-            const fullPath = basePath
             // const fullPath = basePath + "/" + folderPath;
             
 
-            
 
             console.log(`Accessing folder: ${fullPath}`);
             fs.readdir(fullPath, { withFileTypes: true }, (err, files) => {
