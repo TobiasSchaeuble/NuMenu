@@ -112,9 +112,24 @@ class CustomView extends ItemView {
 
                     // Add click event listener
                     item.addEventListener('click', async () => {
-                        // Update the current folder path
-                        this.currentFolderPath += itemName + "/";
-                        const subfolderContents = await this.getFolderContentsAndPrint(this.currentFolderPath);
+                        const fullPath = this.currentFolderPath + itemName;
+                        const fullFilePath = this.app.vault.adapter.basePath + path.resolve(fullPath);
+
+                        // Check if the item is a file
+                        fs.stat(fullFilePath, (err, stats) => {
+                            if (err) {
+                                console.error(`Error accessing ${fullFilePath}:`, err.message);
+                                return;
+                            }
+                            if (stats.isFile()) {
+                                // Open the file in the same leaf
+                                this.leaf.openFile(this.app.vault.getAbstractFileByPath(fullPath));
+                            } else {
+                                // Update the current folder path
+                                this.currentFolderPath += itemName + "/";
+                                this.getFolderContentsAndPrint(this.currentFolderPath);
+                            }
+                        });
                     });
                 });
                 
