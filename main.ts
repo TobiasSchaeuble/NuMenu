@@ -7,10 +7,12 @@ import emojiRegex from 'emoji-regex';
 
 interface PluginSettings {
     selectedFolder: string;
+    fileEmoji: string;
 }
 
 const DEFAULT_SETTINGS: PluginSettings = {
-    selectedFolder: '/'
+    selectedFolder: '/',
+    fileEmoji: '📃',
 };
 
 const VIEW_TYPE_CUSTOM = 'custom-view';
@@ -84,27 +86,53 @@ class CustomView extends ItemView {
 
 
                 
-
-                
                 container.addClass('rpg-view-content');
 
 
                 visibleItems.forEach(itemName => {
                     const item = container.createDiv({ cls: 'rpg-item' });
 
-                    // Use emoji-regex to check if the name starts with an emoji
-                    const regex = emojiRegex();
-                    const emojiMatch = regex.exec(itemName);
-                    if (emojiMatch && emojiMatch.index === 0) {
-                        // Display only the emoji
+                    if ( itemName.endsWith('.md') ) {
+                        // Display the emoji above the file name
                         const emojiDiv = item.createDiv({ cls: 'rpg-item-emoji' });
-                        emojiDiv.setText(emojiMatch[0]);
-                        // Display the full name without the emoji below
+                        emojiDiv.setText(this.plugin.settings.fileEmoji);
+
+                        const previewDiv = item.createDiv({ cls: 'rpg-item-preview' });
+                        // Read the first 33 characters of the file for preview
+                        fs.readFile(fullPath + '/' + itemName, 'utf8', (err, data) => {
+                            if (err) {
+                                console.error(`Error reading file ${fullPath + '/' + itemName}:`, err.message);
+                                return;
+                            }
+                            const previewText = data.slice(0, 33);
+                          
+                            previewDiv.setText(previewText);
+                        });
+
+                        // Display the file name without the .md extension
+                        const fileNameWithoutExtension = itemName.replace(/\.md$/, '');
                         const nameDiv = item.createDiv({ cls: 'rpg-item-name' });
-                        nameDiv.setText(itemName.slice(emojiMatch[0].length));
+                        nameDiv.setText(fileNameWithoutExtension);
+
+                        
+
+
+
                     } else {
-                        const nameDiv = item.createDiv({ cls: 'rpg-item-name' });
-                        nameDiv.setText(itemName);
+                        // Use emoji-regex to check if the name starts with an emoji
+                        const regex = emojiRegex();
+                        const emojiMatch = regex.exec(itemName);
+                        if (emojiMatch && emojiMatch.index === 0) {
+                            // Display only the emoji
+                            const emojiDiv = item.createDiv({ cls: 'rpg-item-emoji' });
+                            emojiDiv.setText(emojiMatch[0]);
+                            // Display the full name without the emoji below
+                            const nameDiv = item.createDiv({ cls: 'rpg-item-name' });
+                            nameDiv.setText(itemName.slice(emojiMatch[0].length));
+                        } else {
+                            const nameDiv = item.createDiv({ cls: 'rpg-item-name' });
+                            nameDiv.setText(itemName);
+                        }
                     }
 
                     // Make item clickable
@@ -122,6 +150,8 @@ class CustomView extends ItemView {
                                 return;
                             }
                             if (stats.isFile()) {
+                                
+
                                 // Open the file in the same leaf
                                 this.leaf.openFile(this.app.vault.getAbstractFileByPath(fullPath));
                             } else {
@@ -228,9 +258,9 @@ export default class MyPlugin extends Plugin {
 
         // If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
         // Using this function will automatically remove the event listener when this plugin is disabled.
-        this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-            console.log('click', evt);
-        });
+        // this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
+        //     console.log('click', evt);
+        // });
 
         // When registering intervals, this function will automatically clear the interval when the plugin is disabled.
         this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
@@ -286,6 +316,17 @@ class SettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.selectedFolder)
                 .onChange(async (value) => {
                     this.plugin.settings.selectedFolder = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('File Emoji')
+            .setDesc('Select the emoji to display above file names')
+            .addText(text => text
+                .setPlaceholder('Enter file emoji')
+                .setValue(this.plugin.settings.fileEmoji)
+                .onChange(async (value) => {
+                    this.plugin.settings.fileEmoji = value;
                     await this.plugin.saveSettings();
                 }));
     }

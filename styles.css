@@ -28,3 +28,9 @@
 .rpg-item-name{
     font-size: 100%;
 }
+
+.rpg-item-preview{
+    position: relative;
+    text-align: center;
+    width: 100%;
+}
