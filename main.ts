@@ -8,11 +8,13 @@ import emojiRegex from 'emoji-regex';
 interface PluginSettings {
     selectedFolder: string;
     fileEmoji: string;
+    openOnStartup: boolean;
 }
 
 const DEFAULT_SETTINGS: PluginSettings = {
     selectedFolder: '/',
     fileEmoji: '📃',
+    openOnStartup: false,
 };
 
 const VIEW_TYPE_OBSIDAN_RPG = 'obsidian-rpg-view';
@@ -188,13 +190,18 @@ export default class ObsidianRPG extends Plugin {
     async onload() {
         await this.loadSettings();
 
-        // Manually add the CSS file to the document head
-        // const link = document.createElement('link');
-        // link.rel = 'stylesheet';
-        // link.type = 'text/css';
-        // link.href = this.app.vault.adapter.basePath + '/styles.css';
-        // document.head.appendChild(link);
+        if (this.settings.openOnStartup) {
+            this.app.workspace.onLayoutReady(() => {
+                const newLeaf = this.app.workspace.getLeaf(true);
+                newLeaf.setViewState({
+                    type: VIEW_TYPE_OBSIDAN_RPG,
+                    active: true
+                });
+                this.app.workspace.revealLeaf(newLeaf);
+            });
+        }
 
+        // Register the view
         this.registerView(
             VIEW_TYPE_OBSIDAN_RPG,
             (leaf) => new ObsidianRPGView(leaf, this)
@@ -219,48 +226,21 @@ export default class ObsidianRPG extends Plugin {
         // const statusBarItemEl = this.addStatusBarItem();
         // statusBarItemEl.setText('Status Bar Text');
 
-        // This adds a simple command that can be triggered anywhere
+
         this.addCommand({
-            id: 'open-sample-modal-simple',
-            name: 'Open sample modal (simple)',
+            id: 'open-rpg-plugin',
+            name: 'Real Play Game',
             callback: () => {
-                new SampleModal(this.app).open();
+                const newLeaf = this.app.workspace.getLeaf(true);
+                newLeaf.setViewState({
+                    type: VIEW_TYPE_OBSIDAN_RPG,
+                    active: true
+                });
+                this.app.workspace.revealLeaf(newLeaf);
             }
         });
-        // // This adds an editor command that can perform some operation on the current editor instance
-        // this.addCommand({
-        //     id: 'sample-editor-command',
-        //     name: 'Sample editor command',
-        //     editorCallback: (editor: Editor, view: MarkdownView) => {
-        //         console.log(editor.getSelection());
-        //         editor.replaceSelection('Sample Editor Command');
-        //     }
-        // });
-        // // This adds a complex command that can check whether the current state of the app allows execution of the command
-        // this.addCommand({
-        //     id: 'open-sample-modal-complex',
-        //     name: 'Open sample modal (complex)',
-        //     checkCallback: (checking: boolean) => {
-        //         // Conditions to check
-        //         const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-        //         if (markdownView) {
-        //             // If checking is true, we're simply "checking" if the command can be run.
-        //             // If checking is false, then we want to actually perform the operation.
-        //             if (!checking) {
-        //                 new SampleModal(this.app).open();
-        //             }
 
-        //             // This command will only show up in Command Palette when the check function returns true
-        //             return true;
-        //         }
-        //     }
-        // });
 
-        // If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-        // Using this function will automatically remove the event listener when this plugin is disabled.
-        // this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-        //     console.log('click', evt);
-        // });
 
         // When registering intervals, this function will automatically clear the interval when the plugin is disabled.
         this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
@@ -327,6 +307,16 @@ class SettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.fileEmoji)
                 .onChange(async (value) => {
                     this.plugin.settings.fileEmoji = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Open on Startup')
+            .setDesc('Automatically open the RPG plugin when Obsidian starts')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.openOnStartup)
+                .onChange(async (value) => {
+                    this.plugin.settings.openOnStartup = value;
                     await this.plugin.saveSettings();
                 }));
     }
