@@ -13,13 +13,14 @@ interface PluginSettings {
 }
 
 const DEFAULT_SETTINGS: PluginSettings = {
-    selectedFolder: '/',
+    selectedFolder: '',
     fileEmoji: '⬜️',
     openOnStartup: false,
     defaultEmoji: '❔',
 };
 
 const VIEW_TYPE_OBSIDAN_RPG = 'obsidian-rpg-view';
+
 
 class ObsidianRPGView extends ItemView {
     private currentFolderPath: string = "";
@@ -42,7 +43,7 @@ class ObsidianRPGView extends ItemView {
         const headerContainer = this.containerEl.children[0];
         const navigationContainer = headerContainer.children[0];
 
-        console.log(`Container: `, headerContainer);
+        // console.log(`Container: `, headerContainer);
         // container.empty();
         // container.addClass('rpg-view-content');
 
@@ -66,6 +67,7 @@ class ObsidianRPGView extends ItemView {
         const selectedFolder = this.plugin.settings.selectedFolder;
 
         // Fetch and display folder contents
+        console.log(`1----Displaying folder: ${selectedFolder}`);
         await this.getFolderContentsAndPrint(selectedFolder);
     }
 
@@ -76,7 +78,19 @@ class ObsidianRPGView extends ItemView {
     async getFolderContentsAndPrint(folderPath: string): Promise<void> {
 
         return new Promise((resolve, reject) => {
-            const fullPath = this.app.vault.adapter.basePath + path.resolve(folderPath);
+
+            // console.log("02", this.app.vault);
+
+
+            const basePath = (this.app.vault.adapter as any).basePath
+
+            console.log("03", basePath);
+
+            const fullPath = basePath
+            // const fullPath = basePath + "/" + folderPath;
+            
+
+            
 
             console.log(`Accessing folder: ${fullPath}`);
             fs.readdir(fullPath, { withFileTypes: true }, (err, files) => {
@@ -165,7 +179,7 @@ class ObsidianRPGView extends ItemView {
                     // Add click event listener
                     item.addEventListener('click', async () => {
                         const fullPath = this.currentFolderPath + itemName;
-                        const fullFilePath = this.app.vault.adapter.basePath + path.resolve(fullPath);
+                        const fullFilePath = (this.app.vault.adapter as any).basePath + path.resolve(fullPath);
 
                         fs.stat(fullFilePath, (err, stats) => {
                             if (err) {
@@ -340,7 +354,7 @@ class SettingTab extends PluginSettingTab {
             .setName('Select Root Folder')
             .setDesc('Select the folder to display its contents')
             .addText(text => text
-                .setPlaceholder('Enter folder path')
+                .setPlaceholder('Enter folder path (empty if root)')
                 .setValue(this.plugin.settings.selectedFolder)
                 .onChange(async (value) => {
                     this.plugin.settings.selectedFolder = value;
