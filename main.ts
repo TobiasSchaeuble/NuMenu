@@ -14,7 +14,7 @@ interface PluginSettings {
 
 const DEFAULT_SETTINGS: PluginSettings = {
     selectedFolder: '/',
-    fileEmoji: '📃',
+    fileEmoji: '⬜️',
     openOnStartup: false,
     defaultEmoji: '❔',
 };
@@ -36,6 +36,8 @@ class ObsidianRPGView extends ItemView {
         return 'Real Play Game';
     }
 
+    
+
     async onOpen() {
         const headerContainer = this.containerEl.children[0];
         const navigationContainer = headerContainer.children[0];
@@ -47,6 +49,7 @@ class ObsidianRPGView extends ItemView {
         // Add a 'Back' button
         const backButton = navigationContainer.createEl('button', { text: '<' });
         backButton.addEventListener('click', () => this.navigateBack());
+        
 
         // console.log(`Clear for `, this.currentFolderPath);
 
@@ -71,8 +74,10 @@ class ObsidianRPGView extends ItemView {
     }
 
     async getFolderContentsAndPrint(folderPath: string): Promise<void> {
+
         return new Promise((resolve, reject) => {
             const fullPath = this.app.vault.adapter.basePath + path.resolve(folderPath);
+
             console.log(`Accessing folder: ${fullPath}`);
             fs.readdir(fullPath, { withFileTypes: true }, (err, files) => {
                 if (err) {
@@ -84,14 +89,27 @@ class ObsidianRPGView extends ItemView {
                     .filter(dirent => !dirent.name.startsWith('.'))
                     .map(dirent => dirent.name);
                 
+                // Helper function to extract the first non-emoji character
+                const getFirstNonEmojiChar = (name: string) => {
+                    const match = name.match(/[\p{L}\p{N}]/u);
+                    return match ? match[0] : '';
+                };
+
+                // Sort items by the first non-emoji character
+                visibleItems.sort((a, b) => {
+                    const charA = getFirstNonEmojiChar(a);
+                    const charB = getFirstNonEmojiChar(b);
+                    return charA.localeCompare(charB);
+                });
+
                 // Clear container and display contents
                 const container = this.containerEl.children[1];
                 container.empty();
 
-
                 
-                container.addClass('rpg-view-content');
 
+                // Add class to container
+                container.addClass('rpg-view-content');
 
                 visibleItems.forEach((itemName, index) => {
                     const item = container.createDiv({ cls: 'rpg-item' });
@@ -105,17 +123,17 @@ class ObsidianRPGView extends ItemView {
                         const emojiDiv = item.createDiv({ cls: 'rpg-item-emoji' });
                         emojiDiv.setText(this.plugin.settings.fileEmoji);
 
-                        // const previewDiv = item.createDiv({ cls: 'rpg-item-preview' });
-                        // // Read the first 33 characters of the file for preview
-                        // fs.readFile(fullPath + '/' + itemName, 'utf8', (err, data) => {
-                        //     if (err) {
-                        //         console.error(`Error reading file ${fullPath + '/' + itemName}:`, err.message);
-                        //         return;
-                        //     }
-                        //     const previewText = data.slice(0, 33);
+                        const previewDiv = item.createDiv({ cls: 'rpg-item-preview' });
+                        // Read the first 33 characters of the file for preview
+                        fs.readFile(fullPath + '/' + itemName, 'utf8', (err, data) => {
+                            if (err) {
+                                console.error(`Error reading file ${fullPath + '/' + itemName}:`, err.message);
+                                return;
+                            }
+                            const previewText = data.slice(0, 42);
                           
-                        //     previewDiv.setText(previewText);
-                        // });
+                            previewDiv.setText(previewText);
+                        });
 
                         // Display the file name without the .md extension
                         const fileNameWithoutExtension = itemName.replace(/\.md$/, '');
@@ -157,8 +175,20 @@ class ObsidianRPGView extends ItemView {
                             if (stats.isFile()) {
                                 this.leaf.openFile(this.app.vault.getAbstractFileByPath(fullPath));
                             } else {
-                                this.currentFolderPath += itemName + "/";
-                                this.getFolderContentsAndPrint(this.currentFolderPath);
+                                // Check if the folder contains only one file
+                                fs.readdir(fullFilePath, (err, files) => {
+                                    if (err) {
+                                        console.error(`Error reading directory ${fullFilePath}:`, err.message);
+                                        return;
+                                    }
+                                    if (files.length === 1) {
+                                        const singleFilePath = fullPath + "/" + files[0];
+                                        this.leaf.openFile(this.app.vault.getAbstractFileByPath(singleFilePath));
+                                    } else {
+                                        this.currentFolderPath += itemName + "/";
+                                        this.getFolderContentsAndPrint(this.currentFolderPath);
+                                    }
+                                });
                             }
                         });
                     });
@@ -200,12 +230,15 @@ export default class ObsidianRPG extends Plugin {
 
         if (this.settings.openOnStartup) {
             this.app.workspace.onLayoutReady(() => {
-                const newLeaf = this.app.workspace.getLeaf(true);
-                newLeaf.setViewState({
-                    type: VIEW_TYPE_OBSIDAN_RPG,
-                    active: true
-                });
-                this.app.workspace.revealLeaf(newLeaf);
+                const existingView = this.app.workspace.getLeavesOfType(VIEW_TYPE_OBSIDAN_RPG);
+                if (existingView.length === 0) {
+                    const newLeaf = this.app.workspace.getLeaf(true);
+                    newLeaf.setViewState({
+                        type: VIEW_TYPE_OBSIDAN_RPG,
+                        active: true
+                    });
+                    this.app.workspace.revealLeaf(newLeaf);
+                }
             });
         }
 
@@ -221,11 +254,15 @@ export default class ObsidianRPG extends Plugin {
         const ribbonIconEl = this.addRibbonIcon('dice', 'Obsidian RPG', (evt: MouseEvent) => {
             // Called when the user clicks the icon.
             // Open a new tab with four columns
-            const newLeaf = this.app.workspace.getLeaf(true);
-            newLeaf.setViewState({
-                type: VIEW_TYPE_OBSIDAN_RPG,
-                active: true
-            });
+            const existingView = this.app.workspace.getLeavesOfType(VIEW_TYPE_OBSIDAN_RPG);
+            if (existingView.length === 0) {
+                const newLeaf = this.app.workspace.getLeaf(true);
+                newLeaf.setViewState({
+                    type: VIEW_TYPE_OBSIDAN_RPG,
+                    active: true
+                });
+                this.app.workspace.revealLeaf(newLeaf);
+            }
         });
         // Perform additional things with the ribbon
         ribbonIconEl.addClass('obsidian-rpg-ribbon-class');
@@ -239,12 +276,15 @@ export default class ObsidianRPG extends Plugin {
             id: 'open-rpg-plugin',
             name: 'Real Play Game',
             callback: () => {
-                const newLeaf = this.app.workspace.getLeaf(true);
-                newLeaf.setViewState({
-                    type: VIEW_TYPE_OBSIDAN_RPG,
-                    active: true
-                });
-                this.app.workspace.revealLeaf(newLeaf);
+                const existingView = this.app.workspace.getLeavesOfType(VIEW_TYPE_OBSIDAN_RPG);
+                if (existingView.length === 0) {
+                    const newLeaf = this.app.workspace.getLeaf(true);
+                    newLeaf.setViewState({
+                        type: VIEW_TYPE_OBSIDAN_RPG,
+                        active: true
+                    });
+                    this.app.workspace.revealLeaf(newLeaf);
+                }
             }
         });
 
