@@ -1,6 +1,5 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, ItemView } from 'obsidian';
 import * as fs from 'fs';
-import * as path from 'path';
 import emojiRegex from 'emoji-regex';
 
 // Remember to rename these classes and interfaces!
@@ -82,10 +81,7 @@ class ObsidianRPGView extends ItemView {
             // console.log("02", this.app.vault);
 
 
-            let fullPath = (this.app.vault.adapter as any).basePath + "/" + folderPath
-
-            // const fullPath = basePath + "/" + folderPath;
-            
+            let fullPath = (this.app.vault.adapter as any).basePath + "/" + folderPath;
 
 
             console.log(`Accessing folder: ${fullPath}`);
@@ -175,7 +171,7 @@ class ObsidianRPGView extends ItemView {
                     // Add click event listener
                     item.addEventListener('click', async () => {
                         const fullPath = this.currentFolderPath + itemName;
-                        const fullFilePath = (this.app.vault.adapter as any).basePath + path.resolve(fullPath);
+                        const fullFilePath = (this.app.vault.adapter as any).basePath + "/" + fullPath;
 
                         fs.stat(fullFilePath, (err, stats) => {
                             if (err) {
