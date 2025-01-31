@@ -1,5 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, ItemView } from 'obsidian';
-import * as fs from 'fs';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, ItemView, TFile, TFolder } from 'obsidian';
 import emojiRegex from 'emoji-regex';
 
 // Remember to rename these classes and interfaces!
@@ -39,6 +38,7 @@ class ObsidianRPGView extends ItemView {
     
 
     async onOpen() {
+        console.log(`0----onOpen`);
         const headerContainer = this.containerEl.children[0];
         const navigationContainer = headerContainer.children[0];
 
@@ -62,8 +62,16 @@ class ObsidianRPGView extends ItemView {
             }
         });
 
+
+        // const selectedFolder = (this.app.vault.adapter as any).basePath + "/"
+
+        // const rootFolder = this.app.vault.getRoot();
+        // const selectedFolder = rootFolder.path;
+
+
         // Use selected folder from settings
-        const selectedFolder = this.plugin.settings.selectedFolder;
+        
+        const selectedFolder = "/" + this.plugin.settings.selectedFolder;
 
         // Fetch and display folder contents
         console.log(`1----Displaying folder: ${selectedFolder}`);
@@ -76,24 +84,26 @@ class ObsidianRPGView extends ItemView {
 
     async getFolderContentsAndPrint(folderPath: string): Promise<void> {
 
+        console.log(`2----getFolderContentsAndPrint: ${folderPath}`);
+
+        // this.app.vault.adapter.list(folderPath).then((result) => {
+        //     console.log("3----result:",result);
+        // });
+
         return new Promise((resolve, reject) => {
 
             // console.log("02", this.app.vault);
 
 
-            let fullPath = (this.app.vault.adapter as any).basePath + "/" + folderPath;
+            this.app.vault.adapter.list(folderPath).then((result) => {
 
-
-            console.log(`Accessing folder: ${fullPath}`);
-            fs.readdir(fullPath, { withFileTypes: true }, (err, files) => {
-                if (err) {
-                    console.error(`Error accessing ${fullPath}:`, err.message);
-                    reject(err);
-                    return;
-                }
-                const visibleItems = files
-                    .filter(dirent => !dirent.name.startsWith('.'))
-                    .map(dirent => dirent.name);
+                console.log("03", result);
+                const visibleItems = [...result.folders, ...result.files]
+                    .filter(file => !file.split('/').pop().startsWith('.'))
+                    .map(file => {
+                        const parts = file.split('/');
+                        return parts[parts.length - 1];
+                    });
                 
                 // Helper function to extract the first non-emoji character
                 const getFirstNonEmojiChar = (name: string) => {
@@ -118,6 +128,7 @@ class ObsidianRPGView extends ItemView {
                 container.addClass('rpg-view-content');
 
                 visibleItems.forEach((itemName, index) => {
+                    console.log(`itemName: ${itemName}`);
                     const item = container.createDiv({ cls: 'rpg-item' });
 
                     // Add numbering to each item
@@ -131,14 +142,11 @@ class ObsidianRPGView extends ItemView {
 
                         const previewDiv = item.createDiv({ cls: 'rpg-item-preview' });
                         // Read the first 33 characters of the file for preview
-                        fs.readFile(fullPath + '/' + itemName, 'utf8', (err, data) => {
-                            if (err) {
-                                console.error(`Error reading file ${fullPath + '/' + itemName}:`, err.message);
-                                return;
-                            }
+                        this.app.vault.adapter.read(folderPath + '/' + itemName).then((data) => {
                             const previewText = data.slice(0, 42);
-                          
                             previewDiv.setText(previewText);
+                        }).catch((err) => {
+                            console.error(`Error reading file ${folderPath + '/' + itemName}:`, err.message);
                         });
 
                         // Display the file name without the .md extension
@@ -171,31 +179,30 @@ class ObsidianRPGView extends ItemView {
                     // Add click event listener
                     item.addEventListener('click', async () => {
                         const fullPath = this.currentFolderPath + itemName;
-                        const fullFilePath = (this.app.vault.adapter as any).basePath + "/" + fullPath;
+                        const fullFilePath = this.app.vault.getAbstractFileByPath(fullPath);
 
-                        fs.stat(fullFilePath, (err, stats) => {
-                            if (err) {
-                                console.error(`Error accessing ${fullFilePath}:`, err.message);
-                                return;
-                            }
-                            if (stats.isFile()) {
-                                this.leaf.openFile(this.app.vault.getAbstractFileByPath(fullPath));
-                            } else {
-                                // Check if the folder contains only one file
-                                fs.readdir(fullFilePath, (err, files) => {
-                                    if (err) {
-                                        console.error(`Error reading directory ${fullFilePath}:`, err.message);
-                                        return;
-                                    }
-                                    if (files.length === 1) {
-                                        const singleFilePath = fullPath + "/" + files[0];
+                        console.log(`addEventListener----fullPath: ${fullPath}`);
+                        console.log(`addEventListener----fullFilePath: ${fullFilePath}`);
+
+                        this.app.vault.adapter.stat(fullPath).then((stats) => {
+                            console.log(`addEventListener----stats:` + JSON.stringify(stats));
+                            if (stats.type === 'file') {
+                                this.leaf.openFile(fullFilePath);
+                            } else if (stats.type === 'folder') {
+                                this.app.vault.adapter.list(fullPath).then((result) => {
+                                    if (result.files.length === 1) {
+                                        const singleFilePath = fullPath + '/' + result.files[0];
                                         this.leaf.openFile(this.app.vault.getAbstractFileByPath(singleFilePath));
                                     } else {
-                                        this.currentFolderPath += itemName + "/";
+                                        this.currentFolderPath += itemName + '/';
                                         this.getFolderContentsAndPrint(this.currentFolderPath);
                                     }
+                                }).catch((err) => {
+                                    console.error(`Error reading directory ${fullFilePath}:`, err.message);
                                 });
                             }
+                        }).catch((err) => {
+                            console.error(`Error accessing ${fullFilePath}:`, err.message);
                         });
                     });
 
@@ -210,6 +217,9 @@ class ObsidianRPGView extends ItemView {
                 });
                 
                 resolve();
+            }).catch((err) => {
+                console.error(`Error accessing ${folderPath}:`, err.message);
+                reject(err);
             });
         });
     }
