@@ -9,12 +9,14 @@ interface PluginSettings {
     selectedFolder: string;
     fileEmoji: string;
     openOnStartup: boolean;
+    defaultEmoji: string;
 }
 
 const DEFAULT_SETTINGS: PluginSettings = {
     selectedFolder: '/',
     fileEmoji: '📃',
     openOnStartup: false,
+    defaultEmoji: '❔',
 };
 
 const VIEW_TYPE_OBSIDAN_RPG = 'obsidian-rpg-view';
@@ -91,35 +93,34 @@ class ObsidianRPGView extends ItemView {
                 container.addClass('rpg-view-content');
 
 
-                visibleItems.forEach(itemName => {
+                visibleItems.forEach((itemName, index) => {
                     const item = container.createDiv({ cls: 'rpg-item' });
+
+                    // Add numbering to each item
+                    const numberDiv = item.createDiv({ cls: 'rpg-item-number' });
+                    numberDiv.setText((index + 1).toString());
 
                     if ( itemName.endsWith('.md') ) {
                         // Display the emoji above the file name
                         const emojiDiv = item.createDiv({ cls: 'rpg-item-emoji' });
                         emojiDiv.setText(this.plugin.settings.fileEmoji);
 
-                        const previewDiv = item.createDiv({ cls: 'rpg-item-preview' });
-                        // Read the first 33 characters of the file for preview
-                        fs.readFile(fullPath + '/' + itemName, 'utf8', (err, data) => {
-                            if (err) {
-                                console.error(`Error reading file ${fullPath + '/' + itemName}:`, err.message);
-                                return;
-                            }
-                            const previewText = data.slice(0, 33);
+                        // const previewDiv = item.createDiv({ cls: 'rpg-item-preview' });
+                        // // Read the first 33 characters of the file for preview
+                        // fs.readFile(fullPath + '/' + itemName, 'utf8', (err, data) => {
+                        //     if (err) {
+                        //         console.error(`Error reading file ${fullPath + '/' + itemName}:`, err.message);
+                        //         return;
+                        //     }
+                        //     const previewText = data.slice(0, 33);
                           
-                            previewDiv.setText(previewText);
-                        });
+                        //     previewDiv.setText(previewText);
+                        // });
 
                         // Display the file name without the .md extension
                         const fileNameWithoutExtension = itemName.replace(/\.md$/, '');
                         const nameDiv = item.createDiv({ cls: 'rpg-item-name' });
                         nameDiv.setText(fileNameWithoutExtension);
-
-                        
-
-
-
                     } else {
                         // Use emoji-regex to check if the name starts with an emoji
                         const regex = emojiRegex();
@@ -132,6 +133,9 @@ class ObsidianRPGView extends ItemView {
                             const nameDiv = item.createDiv({ cls: 'rpg-item-name' });
                             nameDiv.setText(itemName.slice(emojiMatch[0].length));
                         } else {
+                            // Use default emoji if no emoji is at the beginning
+                            const emojiDiv = item.createDiv({ cls: 'rpg-item-emoji' });
+                            emojiDiv.setText(this.plugin.settings.defaultEmoji);
                             const nameDiv = item.createDiv({ cls: 'rpg-item-name' });
                             nameDiv.setText(itemName);
                         }
@@ -145,24 +149,28 @@ class ObsidianRPGView extends ItemView {
                         const fullPath = this.currentFolderPath + itemName;
                         const fullFilePath = this.app.vault.adapter.basePath + path.resolve(fullPath);
 
-                        // Check if the item is a file
                         fs.stat(fullFilePath, (err, stats) => {
                             if (err) {
                                 console.error(`Error accessing ${fullFilePath}:`, err.message);
                                 return;
                             }
                             if (stats.isFile()) {
-                                
-
-                                // Open the file in the same leaf
                                 this.leaf.openFile(this.app.vault.getAbstractFileByPath(fullPath));
                             } else {
-                                // Update the current folder path
                                 this.currentFolderPath += itemName + "/";
                                 this.getFolderContentsAndPrint(this.currentFolderPath);
                             }
                         });
                     });
+
+                    // Add keyboard shortcut for numbers 1-9
+                    if (index < 9) {
+                        this.registerDomEvent(document, 'keydown', (evt: KeyboardEvent) => {
+                            if (evt.key === (index + 1).toString()) {
+                                item.click();
+                            }
+                        });
+                    }
                 });
                 
                 resolve();
@@ -289,7 +297,7 @@ class SettingTab extends PluginSettingTab {
         containerEl.empty();
 
         new Setting(containerEl)
-            .setName('Selected Folder')
+            .setName('Select Root Folder')
             .setDesc('Select the folder to display its contents')
             .addText(text => text
                 .setPlaceholder('Enter folder path')
@@ -307,6 +315,17 @@ class SettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.fileEmoji)
                 .onChange(async (value) => {
                     this.plugin.settings.fileEmoji = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Default Emoji')
+            .setDesc('Select the default emoji to display for items without an emoji')
+            .addText(text => text
+                .setPlaceholder('Enter default emoji')
+                .setValue(this.plugin.settings.defaultEmoji)
+                .onChange(async (value) => {
+                    this.plugin.settings.defaultEmoji = value;
                     await this.plugin.saveSettings();
                 }));
 
