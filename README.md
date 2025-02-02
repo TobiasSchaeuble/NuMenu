@@ -6,6 +6,8 @@
 ## Navigate through your notes with ease!
 Numenu brings the classic gaming-style numeric menu navigation to your Obsidian experience.
 
+![Demo of Numenu in action](demo/demo1.gif)
+
 ## 🔑 Key Features:
 - Lightning-fast navigation using numeric hotkeys
 - Intuitive menu structure inspired by retro gaming
