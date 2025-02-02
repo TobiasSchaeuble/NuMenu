@@ -3,9 +3,9 @@
 	"name": "NuMenu",
 	"version": "0.0.3",
 	"minAppVersion": "0.15.0",
-	"description": "Navigate through your notes with lightning speed using numeric shortcuts",
-	"author": "Tobias Schäuble",
+	"description": "Navigate through your notes with lightning speed using numeric shortcuts.",
+	"author": "Tobias Ziegler",
 	"authorUrl": "https://manufaktur.site",
-	"fundingUrl": "https://manufaktur.site",
+	"fundingUrl": "https://buymeacoffee.com/tobiasziegler",
 	"isDesktopOnly": false
 }
