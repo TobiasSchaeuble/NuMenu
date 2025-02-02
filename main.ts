@@ -36,23 +36,13 @@ class ObsidianRPGView extends ItemView {
     
 
     async onOpen() {
-        console.log(`0----onOpen`);
         const headerContainer = this.containerEl.children[0];
         const navigationContainer = headerContainer.children[0];
-
-        // console.log(`Container: `, headerContainer);
-        // container.empty();
-        // container.addClass('rpg-view-content');
 
         // Add a 'Back' button
         const backButton = navigationContainer.createEl('button', { text: '<' });
         backButton.addEventListener('click', () => this.navigateBack());
         
-
-        // console.log(`Clear for `, this.currentFolderPath);
-
-        
-
         // Handle backspace key
         this.registerDomEvent(document, 'keydown', (evt: KeyboardEvent) => {
             if (evt.key === 'Backspace') {
@@ -62,7 +52,6 @@ class ObsidianRPGView extends ItemView {
 
 
         // Fetch and display folder contents
-        console.log(`1----Displaying folder: ${this.currentFolderPath}`);
         await this.getFolderContentsAndPrint(this.currentFolderPath);
     }
 
@@ -110,7 +99,7 @@ class ObsidianRPGView extends ItemView {
 
                     // Add numbering to each item
                     const numberDiv = item.createDiv({ cls: 'rpg-item-number' });
-                    numberDiv.setText((index + 1).toString());
+                        numberDiv.setText((index + 1).toString());
 
                     if ( itemName.endsWith('.md') ) {
                         // Display the emoji above the file name
