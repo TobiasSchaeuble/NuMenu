@@ -7,12 +7,14 @@ interface PluginSettings {
     fileEmoji: string;
     openOnStartup: boolean;
     defaultEmoji: string;
+    customOrder: { [folderPath: string]: string[] };
 }
 
 const DEFAULT_SETTINGS: PluginSettings = {
     fileEmoji: '⬜️',
     openOnStartup: false,
     defaultEmoji: '❔',
+    customOrder: {},
 };
 
 const VIEW_TYPE_OBSIDAN_RPG = 'obsidian-rpg-view';
@@ -77,29 +79,80 @@ class ObsidianRPGView extends ItemView {
                     return match ? match[0] : '';
                 };
 
-                // Sort items by the first non-emoji character
+                console.log("---this.plugin.settings.customOrder " + this.plugin.settings.customOrder);
+
+                // Sort items based on custom order if available, otherwise by first non-emoji character
+                const customOrder = this.plugin.settings.customOrder[folderPath] || [];
                 visibleItems.sort((a, b) => {
+                    const indexA = customOrder.indexOf(a);
+                    const indexB = customOrder.indexOf(b);
+                    
+                    // If both items are in custom order, use that order
+                    if (indexA !== -1 && indexB !== -1) {
+                        return indexA - indexB;
+                    }
+                    // If only one item is in custom order, prioritize it
+                    if (indexA !== -1) return -1;
+                    if (indexB !== -1) return 1;
+                    
+                    // Otherwise, sort by first non-emoji character
                     const charA = getFirstNonEmojiChar(a);
                     const charB = getFirstNonEmojiChar(b);
                     return charA.localeCompare(charB);
                 });
 
+
+
                 // Clear container and display contents
                 const container = this.containerEl.children[1];
                 container.empty();
 
+                // Create a container for the items that supports drag and drop
+                const itemsContainer = container.createDiv({ cls: 'rpg-items-container' });
                 
-
-                // Add class to container
-                container.addClass('rpg-view-content');
-
                 visibleItems.forEach((itemName, index) => {
-                    // console.log(`itemName: ${itemName}`);
-                    const item = container.createDiv({ cls: 'rpg-item' });
+                    const item = itemsContainer.createDiv({ cls: 'rpg-item' });
+                    item.setAttribute('draggable', 'true');
+                    item.dataset.name = itemName;
+
+                    // Add drag and drop event listeners
+                    item.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.setData('text/plain', itemName);
+                        item.addClass('dragging');
+                    });
+
+                    item.addEventListener('dragend', () => {
+                        item.removeClass('dragging');
+                    });
+
+                    item.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        const draggingItem = itemsContainer.querySelector('.dragging');
+                        if (draggingItem && draggingItem !== item) {
+                            const rect = item.getBoundingClientRect();
+                            const midY = rect.top + rect.height / 2;
+                            if (e.clientY < midY) {
+                                item.before(draggingItem);
+                            } else {
+                                item.after(draggingItem);
+                            }
+                        }
+                    });
+
+                    item.addEventListener('drop', async (e) => {
+                        e.preventDefault();
+                        // Update the custom order based on the current DOM order
+                        const newOrder = Array.from(itemsContainer.children)
+                            .map(child => child.dataset.name)
+                            .filter(name => name); // Remove any undefined/null values
+                        
+                        this.plugin.settings.customOrder[folderPath] = newOrder;
+                        await this.plugin.saveSettings();
+                    });
 
                     // Add numbering to each item
                     const numberDiv = item.createDiv({ cls: 'rpg-item-number' });
-                        numberDiv.setText((index + 1).toString());
+                    numberDiv.setText((index + 1).toString());
 
                     if ( itemName.endsWith('.md') ) {
                         // Display the emoji above the file name
@@ -177,7 +230,7 @@ class ObsidianRPGView extends ItemView {
             // Remove the last folder from the path
             const pathParts = this.currentFolderPath.split('/').filter(part => part);
             pathParts.pop();
-            this.currentFolderPath = pathParts.join('/') + '/';
+            this.currentFolderPath = pathParts.join('/');
 
             // Refresh the folder view
             this.getFolderContentsAndPrint(this.currentFolderPath);
@@ -314,6 +367,33 @@ class SettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.openOnStartup = value;
                     await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Custom Folder Order')
+            .setDesc('Configure custom order for folders (JSON format). Example: {"folder1": ["item1", "item2"], "folder2": ["itemA", "itemB"]}')
+            .addTextArea(text => text
+                .setValue(JSON.stringify(this.plugin.settings.customOrder, null, 2))
+                .onChange(async (value) => {
+                    try {
+                        const parsed = JSON.parse(value);
+                        this.plugin.settings.customOrder = parsed;
+                        await this.plugin.saveSettings();
+                        new Notice('Custom order saved successfully');
+                    } catch (e) {
+                        new Notice('Invalid JSON format');
+                    }
+                }));
+
+        new Setting(containerEl)
+            .setName('Reset Custom Order')
+            .setDesc('Reset the custom order for all folders. This will restore the default alphabetical sorting.')
+            .addButton(button => button
+                .setButtonText('Reset Order')
+                .onClick(async () => {
+                    this.plugin.settings.customOrder = {} as Record<string, string[]>;
+                    await this.plugin.saveSettings();
+                    new Notice('Custom order has been reset for all folders');
                 }));
     }
 }
