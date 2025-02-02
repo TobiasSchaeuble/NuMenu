@@ -84,24 +84,13 @@ class ObsidianRPGView extends ItemView {
 
     async getFolderContentsAndPrint(folderPath: string): Promise<void> {
 
-        console.log(`2----getFolderContentsAndPrint: ${folderPath}`);
-
-        // this.app.vault.adapter.list(folderPath).then((result) => {
-        //     console.log("3----result:",result);
-        // });
-
         return new Promise((resolve, reject) => {
 
-            // console.log("02", this.app.vault);
-
-
             this.app.vault.adapter.list(folderPath).then((result) => {
-
-                console.log("03", result);
                 const visibleItems = [...result.folders, ...result.files]
-                    .filter(file => !file.split('/').pop().startsWith('.'))
-                    .map(file => {
-                        const parts = file.split('/');
+                    .filter(object => !object.split('/').pop().startsWith('.'))
+                    .map(object => {
+                        const parts = object.split('/');
                         return parts[parts.length - 1];
                     });
                 

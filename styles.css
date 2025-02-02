@@ -23,8 +23,8 @@
     text-align: center;
     width: auto;
     min-width: 33%;
-    margin-top: 5vw;
-    margin-bottom: 11vw;
+    margin-top: 5vh;
+    margin-bottom: 11vh;
 }
 
 @media only screen and (max-width: 1024px) {
@@ -43,15 +43,19 @@
     position: relative;
     width: 100%;
     height: 0;
-    font-size: 28vw;
+    font-size: 28vh;
     z-index: 0;
     color: #f2f2f2;
-    margin-top: -13vw;
-    margin-bottom: 13vw;
+    margin-top: -13vh;
+    margin-bottom: 13vh;
+}
+
+.theme-dark .rpg-item-number{
+    color: #272727;
 }
 
 .rpg-item-emoji{
-    font-size: 8vw;
+    font-size: 8vh;
     z-index: 2;
 }
 
@@ -66,8 +70,8 @@
     width: 17%;
     height: 0;
     margin: auto;
-    margin-top: -7vw;
-    margin-bottom: 8vw;
+    margin-top: -7vh;
+    margin-bottom: 8vh;
     font-size: 50%;
     z-index: 2;
     /* opacity: 0.5; */
