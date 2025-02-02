@@ -4,14 +4,12 @@ import emojiRegex from 'emoji-regex';
 // Remember to rename these classes and interfaces!
 
 interface PluginSettings {
-    selectedFolder: string;
     fileEmoji: string;
     openOnStartup: boolean;
     defaultEmoji: string;
 }
 
 const DEFAULT_SETTINGS: PluginSettings = {
-    selectedFolder: '',
     fileEmoji: '⬜️',
     openOnStartup: false,
     defaultEmoji: '❔',
@@ -63,19 +61,9 @@ class ObsidianRPGView extends ItemView {
         });
 
 
-        // const selectedFolder = (this.app.vault.adapter as any).basePath + "/"
-
-        // const rootFolder = this.app.vault.getRoot();
-        // const selectedFolder = rootFolder.path;
-
-
-        // Use selected folder from settings
-        
-        const selectedFolder = "/" + this.plugin.settings.selectedFolder;
-
         // Fetch and display folder contents
-        console.log(`1----Displaying folder: ${selectedFolder}`);
-        await this.getFolderContentsAndPrint(selectedFolder);
+        console.log(`1----Displaying folder: ${this.currentFolderPath}`);
+        await this.getFolderContentsAndPrint(this.currentFolderPath);
     }
 
     async onClose() {
@@ -117,7 +105,7 @@ class ObsidianRPGView extends ItemView {
                 container.addClass('rpg-view-content');
 
                 visibleItems.forEach((itemName, index) => {
-                    console.log(`itemName: ${itemName}`);
+                    // console.log(`itemName: ${itemName}`);
                     const item = container.createDiv({ cls: 'rpg-item' });
 
                     // Add numbering to each item
@@ -168,31 +156,13 @@ class ObsidianRPGView extends ItemView {
                     // Add click event listener
                     item.addEventListener('click', async () => {
                         const fullPath = this.currentFolderPath + itemName;
-                        const fullFilePath = this.app.vault.getAbstractFileByPath(fullPath);
-
-                        console.log(`addEventListener----fullPath: ${fullPath}`);
-                        console.log(`addEventListener----fullFilePath: ${fullFilePath}`);
-
-                        this.app.vault.adapter.stat(fullPath).then((stats) => {
-                            console.log(`addEventListener----stats:` + JSON.stringify(stats));
-                            if (stats.type === 'file') {
-                                this.leaf.openFile(fullFilePath);
-                            } else if (stats.type === 'folder') {
-                                this.app.vault.adapter.list(fullPath).then((result) => {
-                                    if (result.files.length === 1) {
-                                        const singleFilePath = fullPath + '/' + result.files[0];
-                                        this.leaf.openFile(this.app.vault.getAbstractFileByPath(singleFilePath));
-                                    } else {
-                                        this.currentFolderPath += itemName + '/';
-                                        this.getFolderContentsAndPrint(this.currentFolderPath);
-                                    }
-                                }).catch((err) => {
-                                    console.error(`Error reading directory ${fullFilePath}:`, err.message);
-                                });
-                            }
-                        }).catch((err) => {
-                            console.error(`Error accessing ${fullFilePath}:`, err.message);
-                        });
+                        const file = this.app.vault.getAbstractFileByPath(fullPath);
+                        if (file instanceof TFile) {
+                            this.leaf.openFile(file);
+                        } else if (file instanceof TFolder) {
+                            this.currentFolderPath += itemName + '/';
+                            this.getFolderContentsAndPrint(this.currentFolderPath);
+                        }
                     });
 
                     // Add keyboard shortcut for numbers 1-9
@@ -214,7 +184,7 @@ class ObsidianRPGView extends ItemView {
     }
 
     private navigateBack() {
-        if (this.currentFolderPath) {
+        if (this.currentFolderPath !== '/') {
             // Remove the last folder from the path
             const pathParts = this.currentFolderPath.split('/').filter(part => part);
             pathParts.pop();
@@ -312,22 +282,6 @@ export default class ObsidianRPG extends Plugin {
     }
 }
 
-class SampleModal extends Modal {
-    constructor(app: App) {
-        super(app);
-    }
-
-    onOpen() {
-        const {contentEl} = this;
-        contentEl.setText('Woah!');
-    }
-
-    onClose() {
-        const {contentEl} = this;
-        contentEl.empty();
-    }
-}
-
 class SettingTab extends PluginSettingTab {
     plugin: ObsidianRPG;
 
@@ -340,17 +294,6 @@ class SettingTab extends PluginSettingTab {
         const { containerEl } = this;
 
         containerEl.empty();
-
-        new Setting(containerEl)
-            .setName('Select Root Folder')
-            .setDesc('Select the folder to display its contents')
-            .addText(text => text
-                .setPlaceholder('Enter folder path (empty if root)')
-                .setValue(this.plugin.settings.selectedFolder)
-                .onChange(async (value) => {
-                    this.plugin.settings.selectedFolder = value;
-                    await this.plugin.saveSettings();
-                }));
 
         new Setting(containerEl)
             .setName('File Emoji')
