@@ -1,10 +1,10 @@
 {
-	"id": "obsidian-rpg",
-	"name": "Obsidian RPG",
-	"version": "0.0.1",
+	"id": "numenu",
+	"name": "NuMenu",
+	"version": "0.0.3",
 	"minAppVersion": "0.15.0",
-	"description": "Obsidian Roll Play Game",
-	"author": "Obsidian",
+	"description": "Navigate through your notes with lightning speed using numeric shortcuts",
+	"author": "Tobias Schäuble",
 	"authorUrl": "https://manufaktur.site",
 	"fundingUrl": "https://manufaktur.site",
 	"isDesktopOnly": false

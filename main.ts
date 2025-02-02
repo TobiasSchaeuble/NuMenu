@@ -3,7 +3,7 @@ import emojiRegex from 'emoji-regex';
 
 // Remember to rename these classes and interfaces!
 
-interface PluginSettings {
+interface NuMenuSettings {
     fileEmoji: string;
     openOnStartup: boolean;
     reopenExistingView: boolean;
@@ -11,7 +11,7 @@ interface PluginSettings {
     customOrder: { [folderPath: string]: string[] };
 }
 
-const DEFAULT_SETTINGS: PluginSettings = {
+const DEFAULT_SETTINGS: NuMenuSettings = {
     fileEmoji: '⬜️',
     openOnStartup: false,
     reopenExistingView: true,
@@ -19,25 +19,23 @@ const DEFAULT_SETTINGS: PluginSettings = {
     customOrder: {}
 };
 
-const VIEW_TYPE_OBSIDAN_RPG = 'obsidian-rpg-view';
+const VIEW_TYPE_NuMenu = 'NuMenu-view';
 
 
-class ObsidianRPGView extends ItemView {
+class NuMenuView extends ItemView {
     private currentFolderPath: string = "";
 
-    constructor(leaf: WorkspaceLeaf, private plugin: ObsidianRPG) {
+    constructor(leaf: WorkspaceLeaf, private plugin: NuMenu) {
         super(leaf);
     }
 
     getViewType() {
-        return VIEW_TYPE_OBSIDAN_RPG;
+        return VIEW_TYPE_NuMenu;
     }
 
     getDisplayText() {
-        return 'Real Play Game';
-    }
-
-    
+        return 'NuMenu';
+    }    
 
     async onOpen() {
         const headerContainer = this.containerEl.children[0];
@@ -47,13 +45,22 @@ class ObsidianRPGView extends ItemView {
         const backButton = navigationContainer.createEl('button', { text: '<' });
         backButton.addEventListener('click', () => this.navigateBack());
         
+        // Add a reload button (initially hidden)
+        const reloadButton = navigationContainer.createEl('button', { 
+            text: '↻',
+            cls: 'reload-button hidden'
+        });
+        reloadButton.addEventListener('click', async () => {
+            await this.getFolderContentsAndPrint(this.currentFolderPath);
+            reloadButton.addClass('hidden');
+        });
+        
         // Handle backspace key
         this.registerDomEvent(document, 'keydown', (evt: KeyboardEvent) => {
             if (evt.key === 'Backspace') {
                 this.navigateBack();
             }
         });
-
 
         // Fetch and display folder contents
         await this.getFolderContentsAndPrint(this.currentFolderPath);
@@ -110,10 +117,10 @@ class ObsidianRPGView extends ItemView {
                 container.empty();
 
                 // Create a container for the items that supports drag and drop
-                const itemsContainer = container.createDiv({ cls: 'rpg-items-container' });
+                const itemsContainer = container.createDiv({ cls: 'NuMenu-items-container' });
                 
                 visibleItems.forEach((itemName, index) => {
-                    const item = itemsContainer.createDiv({ cls: 'rpg-item' });
+                    const item = itemsContainer.createDiv({ cls: 'NuMenu-item' });
                     item.setAttribute('draggable', 'true');
                     item.dataset.name = itemName;
 
@@ -150,20 +157,26 @@ class ObsidianRPGView extends ItemView {
                         
                         this.plugin.settings.customOrder[folderPath] = newOrder;
                         await this.plugin.saveSettings();
+
+                        // Show the reload button after drag and drop
+                        const reloadButton = this.containerEl.querySelector('.reload-button');
+                        if (reloadButton) {
+                            reloadButton.removeClass('hidden');
+                        }
                     });
 
                     // Add numbering to each item
-                    const numberDiv = item.createDiv({ cls: 'rpg-item-number' });
+                    const numberDiv = item.createDiv({ cls: 'NuMenu-item-number' });
                     numberDiv.setText((index + 1).toString());
 
                     if ( itemName.endsWith('.md') ) {
-                        const contentContainer = item.createDiv({ cls: 'rpg-item-content' });
+                        const contentContainer = item.createDiv({ cls: 'NuMenu-item-content' });
                         
                         // Display the emoji above the file name
-                        const emojiDiv = contentContainer.createDiv({ cls: 'rpg-item-emoji' });
+                        const emojiDiv = contentContainer.createDiv({ cls: 'NuMenu-item-emoji' });
                         emojiDiv.setText(this.plugin.settings.fileEmoji);
 
-                        const previewDiv = item.createDiv({ cls: 'rpg-item-preview' });
+                        const previewDiv = item.createDiv({ cls: 'NuMenu-item-preview' });
                         // Read the first 33 characters of the file for preview
                         this.app.vault.adapter.read(folderPath + '/' + itemName).then((data) => {
                             const previewText = data.slice(0, 42);
@@ -174,26 +187,26 @@ class ObsidianRPGView extends ItemView {
 
                         // Display the file name without the .md extension
                         const fileNameWithoutExtension = itemName.replace(/\.md$/, '');
-                        const nameDiv = contentContainer.createDiv({ cls: 'rpg-item-name' });
+                        const nameDiv = contentContainer.createDiv({ cls: 'NuMenu-item-name' });
                         nameDiv.setText(fileNameWithoutExtension);
                     } else {
-                        const contentContainer = item.createDiv({ cls: 'rpg-item-content' });
+                        const contentContainer = item.createDiv({ cls: 'NuMenu-item-content' });
                         
                         // Use emoji-regex to check if the name starts with an emoji
                         const regex = emojiRegex();
                         const emojiMatch = regex.exec(itemName);
                         if (emojiMatch && emojiMatch.index === 0) {
                             // Display only the emoji
-                            const emojiDiv = contentContainer.createDiv({ cls: 'rpg-item-emoji' });
+                            const emojiDiv = contentContainer.createDiv({ cls: 'NuMenu-item-emoji' });
                             emojiDiv.setText(emojiMatch[0]);
                             // Display the full name without the emoji below
-                            const nameDiv = contentContainer.createDiv({ cls: 'rpg-item-name' });
+                            const nameDiv = contentContainer.createDiv({ cls: 'NuMenu-item-name' });
                             nameDiv.setText(itemName.slice(emojiMatch[0].length));
                         } else {
                             // Use default emoji if no emoji is at the beginning
-                            const emojiDiv = contentContainer.createDiv({ cls: 'rpg-item-emoji' });
+                            const emojiDiv = contentContainer.createDiv({ cls: 'NuMenu-item-emoji' });
                             emojiDiv.setText(this.plugin.settings.defaultEmoji);
-                            const nameDiv = contentContainer.createDiv({ cls: 'rpg-item-name' });
+                            const nameDiv = contentContainer.createDiv({ cls: 'NuMenu-item-name' });
                             nameDiv.setText(itemName);
                         }
                     }
@@ -245,19 +258,19 @@ class ObsidianRPGView extends ItemView {
 }
 
 
-export default class ObsidianRPG extends Plugin {
-    settings: PluginSettings;
+export default class NuMenu extends Plugin {
+    settings: NuMenuSettings;
 
     async onload() {
         await this.loadSettings();
 
         if (this.settings.openOnStartup) {
             this.app.workspace.onLayoutReady(() => {
-                const existingView = this.app.workspace.getLeavesOfType(VIEW_TYPE_OBSIDAN_RPG);
+                const existingView = this.app.workspace.getLeavesOfType(VIEW_TYPE_NuMenu);
                 if (existingView.length === 0) {
                     const newLeaf = this.app.workspace.getLeaf(true);
                     newLeaf.setViewState({
-                        type: VIEW_TYPE_OBSIDAN_RPG,
+                        type: VIEW_TYPE_NuMenu,
                         active: true
                     });
                     this.app.workspace.revealLeaf(newLeaf);
@@ -267,20 +280,20 @@ export default class ObsidianRPG extends Plugin {
 
         // Register the view
         this.registerView(
-            VIEW_TYPE_OBSIDAN_RPG,
-            (leaf) => new ObsidianRPGView(leaf, this)
+            VIEW_TYPE_NuMenu,
+            (leaf) => new NuMenuView(leaf, this)
         );
 
-        this.addSettingTab(new SettingTab(this.app, this));
+        this.addSettingTab(new NuMenuSettingTab(this.app, this));
 
         // This creates an icon in the left ribbon.
-        const ribbonIconEl = this.addRibbonIcon('dice', 'Obsidian RPG', (evt: MouseEvent) => {
+        const ribbonIconEl = this.addRibbonIcon('dice', 'NuMenu', (evt: MouseEvent) => {
             // Called when the user clicks the icon.
             // Open a new tab with four columns
-            this.openRPGView();
+            this.openNuMenuView();
         });
         // Perform additional things with the ribbon
-        ribbonIconEl.addClass('obsidian-rpg-ribbon-class');
+        ribbonIconEl.addClass('NuMenu-ribbon-class');
 
         // This adds a status bar item to the bottom of the app. Does not work on mobile apps.
         // const statusBarItemEl = this.addStatusBarItem();
@@ -288,10 +301,10 @@ export default class ObsidianRPG extends Plugin {
 
 
         this.addCommand({
-            id: 'open-rpg-plugin',
-            name: 'Real Play Game',
+            id: 'open-NuMenu-plugin',
+            name: 'NuMenu',
             callback: () => {
-                this.openRPGView();
+                this.openNuMenuView();
             }
         });
 
@@ -301,11 +314,11 @@ export default class ObsidianRPG extends Plugin {
         this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
     }
 
-    private openRPGView() {
-        const existingView = this.app.workspace.getLeavesOfType(VIEW_TYPE_OBSIDAN_RPG);
+    private openNuMenuView() {
+        const existingView = this.app.workspace.getLeavesOfType(VIEW_TYPE_NuMenu);
         if (existingView.length > 0) {
             if (this.settings.reopenExistingView) {
-                // Close all existing RPG views
+                // Close all existing NuMenu views
                 // existingView.forEach(leaf => leaf.detach());
                  // Focus existing view instead of creating a new one
                 this.app.workspace.revealLeaf(existingView[0]);
@@ -313,17 +326,17 @@ export default class ObsidianRPG extends Plugin {
             }
         }
         
-        // Create new RPG view
+        // Create new NuMenu view
         const newLeaf = this.app.workspace.getLeaf('tab');
         newLeaf.setViewState({
-            type: VIEW_TYPE_OBSIDAN_RPG,
+            type: VIEW_TYPE_NuMenu,
             active: true
         });
         this.app.workspace.revealLeaf(newLeaf);
     }
 
     onunload() {
-        this.app.workspace.detachLeavesOfType(VIEW_TYPE_OBSIDAN_RPG);
+        this.app.workspace.detachLeavesOfType(VIEW_TYPE_NuMenu);
     }
 
     async loadSettings() {
@@ -335,10 +348,10 @@ export default class ObsidianRPG extends Plugin {
     }
 }
 
-class SettingTab extends PluginSettingTab {
-    plugin: ObsidianRPG;
+class NuMenuSettingTab extends PluginSettingTab {
+    plugin: NuMenu;
 
-    constructor(app: App, plugin: ObsidianRPG) {
+    constructor(app: App, plugin: NuMenu) {
         super(app, plugin);
         this.plugin = plugin;
     }
@@ -372,7 +385,7 @@ class SettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Open on Startup')
-            .setDesc('Automatically open the RPG plugin when Obsidian starts')
+            .setDesc('Automatically open the NuMenu plugin when Obsidian starts')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.openOnStartup)
                 .onChange(async (value) => {
