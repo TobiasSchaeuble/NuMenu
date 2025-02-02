@@ -1,3 +1,15 @@
+:root {
+    --rpg-number-color: #ebebeb;
+    --rpg-number-hover-color: #d7d7d7;
+}
+
+.theme-dark{
+    :root {
+        --rpg-number-color: #1f1f1f;
+        --rpg-number-hover-color: #363636;
+    }
+}
+
 .view-header-nav-buttons{
     display: none;
 }
@@ -48,10 +60,18 @@
     justify-self: center;
 }
 
+.rpg-item-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+
 .rpg-item-number {
     font-size: 28vh;
     z-index: 0;
-    color: #f2f2f2;
+    color: var(--rpg-number-color);
 }
 
 .rpg-item-emoji {
@@ -70,15 +90,12 @@
     opacity: 0.5;
 }
 
-.rpg-item:hover {
-    transform: scale(1.05);
+.rpg-item:hover .rpg-item-number {
+    /* transform: scale(1.05); */
+    color: var(--rpg-number-hover-color);
 }
 
 .rpg-item.dragging {
     opacity: 0.5;
     cursor: grabbing;
-}
-
-.theme-dark .rpg-item-number{
-    color: #272727;
 }

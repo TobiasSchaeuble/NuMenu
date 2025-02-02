@@ -6,6 +6,7 @@ import emojiRegex from 'emoji-regex';
 interface PluginSettings {
     fileEmoji: string;
     openOnStartup: boolean;
+    reopenExistingView: boolean;
     defaultEmoji: string;
     customOrder: { [folderPath: string]: string[] };
 }
@@ -13,8 +14,9 @@ interface PluginSettings {
 const DEFAULT_SETTINGS: PluginSettings = {
     fileEmoji: '⬜️',
     openOnStartup: false,
+    reopenExistingView: true,
     defaultEmoji: '❔',
-    customOrder: {},
+    customOrder: {}
 };
 
 const VIEW_TYPE_OBSIDAN_RPG = 'obsidian-rpg-view';
@@ -155,8 +157,10 @@ class ObsidianRPGView extends ItemView {
                     numberDiv.setText((index + 1).toString());
 
                     if ( itemName.endsWith('.md') ) {
+                        const contentContainer = item.createDiv({ cls: 'rpg-item-content' });
+                        
                         // Display the emoji above the file name
-                        const emojiDiv = item.createDiv({ cls: 'rpg-item-emoji' });
+                        const emojiDiv = contentContainer.createDiv({ cls: 'rpg-item-emoji' });
                         emojiDiv.setText(this.plugin.settings.fileEmoji);
 
                         const previewDiv = item.createDiv({ cls: 'rpg-item-preview' });
@@ -170,24 +174,26 @@ class ObsidianRPGView extends ItemView {
 
                         // Display the file name without the .md extension
                         const fileNameWithoutExtension = itemName.replace(/\.md$/, '');
-                        const nameDiv = item.createDiv({ cls: 'rpg-item-name' });
+                        const nameDiv = contentContainer.createDiv({ cls: 'rpg-item-name' });
                         nameDiv.setText(fileNameWithoutExtension);
                     } else {
+                        const contentContainer = item.createDiv({ cls: 'rpg-item-content' });
+                        
                         // Use emoji-regex to check if the name starts with an emoji
                         const regex = emojiRegex();
                         const emojiMatch = regex.exec(itemName);
                         if (emojiMatch && emojiMatch.index === 0) {
                             // Display only the emoji
-                            const emojiDiv = item.createDiv({ cls: 'rpg-item-emoji' });
+                            const emojiDiv = contentContainer.createDiv({ cls: 'rpg-item-emoji' });
                             emojiDiv.setText(emojiMatch[0]);
                             // Display the full name without the emoji below
-                            const nameDiv = item.createDiv({ cls: 'rpg-item-name' });
+                            const nameDiv = contentContainer.createDiv({ cls: 'rpg-item-name' });
                             nameDiv.setText(itemName.slice(emojiMatch[0].length));
                         } else {
                             // Use default emoji if no emoji is at the beginning
-                            const emojiDiv = item.createDiv({ cls: 'rpg-item-emoji' });
+                            const emojiDiv = contentContainer.createDiv({ cls: 'rpg-item-emoji' });
                             emojiDiv.setText(this.plugin.settings.defaultEmoji);
-                            const nameDiv = item.createDiv({ cls: 'rpg-item-name' });
+                            const nameDiv = contentContainer.createDiv({ cls: 'rpg-item-name' });
                             nameDiv.setText(itemName);
                         }
                     }
@@ -271,15 +277,7 @@ export default class ObsidianRPG extends Plugin {
         const ribbonIconEl = this.addRibbonIcon('dice', 'Obsidian RPG', (evt: MouseEvent) => {
             // Called when the user clicks the icon.
             // Open a new tab with four columns
-            const existingView = this.app.workspace.getLeavesOfType(VIEW_TYPE_OBSIDAN_RPG);
-            if (existingView.length === 0) {
-                const newLeaf = this.app.workspace.getLeaf(true);
-                newLeaf.setViewState({
-                    type: VIEW_TYPE_OBSIDAN_RPG,
-                    active: true
-                });
-                this.app.workspace.revealLeaf(newLeaf);
-            }
+            this.openRPGView();
         });
         // Perform additional things with the ribbon
         ribbonIconEl.addClass('obsidian-rpg-ribbon-class');
@@ -293,15 +291,7 @@ export default class ObsidianRPG extends Plugin {
             id: 'open-rpg-plugin',
             name: 'Real Play Game',
             callback: () => {
-                const existingView = this.app.workspace.getLeavesOfType(VIEW_TYPE_OBSIDAN_RPG);
-                if (existingView.length === 0) {
-                    const newLeaf = this.app.workspace.getLeaf(true);
-                    newLeaf.setViewState({
-                        type: VIEW_TYPE_OBSIDAN_RPG,
-                        active: true
-                    });
-                    this.app.workspace.revealLeaf(newLeaf);
-                }
+                this.openRPGView();
             }
         });
 
@@ -309,6 +299,27 @@ export default class ObsidianRPG extends Plugin {
 
         // When registering intervals, this function will automatically clear the interval when the plugin is disabled.
         this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+    }
+
+    private openRPGView() {
+        const existingView = this.app.workspace.getLeavesOfType(VIEW_TYPE_OBSIDAN_RPG);
+        if (existingView.length > 0) {
+            if (this.settings.reopenExistingView) {
+                // Close all existing RPG views
+                // existingView.forEach(leaf => leaf.detach());
+                 // Focus existing view instead of creating a new one
+                this.app.workspace.revealLeaf(existingView[0]);
+                return;
+            }
+        }
+        
+        // Create new RPG view
+        const newLeaf = this.app.workspace.getLeaf('tab');
+        newLeaf.setViewState({
+            type: VIEW_TYPE_OBSIDAN_RPG,
+            active: true
+        });
+        this.app.workspace.revealLeaf(newLeaf);
     }
 
     onunload() {
@@ -366,6 +377,16 @@ class SettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.openOnStartup)
                 .onChange(async (value) => {
                     this.plugin.settings.openOnStartup = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Reopen Existing View')
+            .setDesc('Reopen the existing view instead of creating a new one when the plugin is opened')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.reopenExistingView)
+                .onChange(async (value) => {
+                    this.plugin.settings.reopenExistingView = value;
                     await this.plugin.saveSettings();
                 }));
 
