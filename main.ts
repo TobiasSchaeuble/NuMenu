@@ -9,9 +9,7 @@ interface NuMenuSettings {
     reopenExistingView: boolean;
     defaultEmoji: string;
     customOrder: { [folderPath: string]: string[] };
-    desktopColumns: number;
-    tabletColumns: number;
-    phoneColumns: number;
+    minWidthPercentage: number;
 }
 
 const DEFAULT_SETTINGS: NuMenuSettings = {
@@ -20,9 +18,7 @@ const DEFAULT_SETTINGS: NuMenuSettings = {
     reopenExistingView: true,
     defaultEmoji: '❔',
     customOrder: {},
-    desktopColumns: 4,
-    tabletColumns: 2,
-    phoneColumns: 1
+    minWidthPercentage: 28
 };
 
 const VIEW_TYPE_NuMenu = 'NuMenu-view';
@@ -33,6 +29,7 @@ class NuMenuView extends ItemView {
 
     constructor(leaf: WorkspaceLeaf, private plugin: NuMenu) {
         super(leaf);
+        this.applyMinWidthSetting();
     }
 
     getViewType() {
@@ -43,15 +40,8 @@ class NuMenuView extends ItemView {
         return 'NuMenu';
     }    
 
-    updateColumnCount() {
-        const isDesktop = this.app.isDesktopApp;
-        const isMobile = this.app.isMobileApp;
-        let columnCount = this.plugin.settings.desktopColumns;
-        if (isMobile) {
-            const isTablet = this.app.metadataCache.getFileSize('') > 768;
-            columnCount = isTablet ? this.plugin.settings.tabletColumns : this.plugin.settings.phoneColumns;
-        }
-        this.containerEl.style.setProperty('--numenu-column-count', columnCount.toString());
+    applyMinWidthSetting() {
+        this.containerEl.style.setProperty('--numenu-item-min-width', `${this.plugin.settings.minWidthPercentage}%`);
     }
 
     async onOpen() {
@@ -81,9 +71,6 @@ class NuMenuView extends ItemView {
 
         // Fetch and display folder contents
         await this.getFolderContentsAndPrint(this.currentFolderPath);
-
-        // Update column count
-        this.updateColumnCount();
     }
 
     async onClose() {
@@ -313,7 +300,7 @@ export default class NuMenu extends Plugin {
             this.app.workspace.on('layout-change', () => {
                 const view = this.app.workspace.getLeavesOfType(VIEW_TYPE_NuMenu)[0]?.view as NuMenuView;
                 if (view) {
-                    view.updateColumnCount();
+                    view.applyMinWidthSetting();
                 }
             })
         );
@@ -463,44 +450,17 @@ class NuMenuSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Desktop Columns')
-            .setDesc('Number of columns to display in the NuMenu view on desktop (1-4)')
-            .addText(text => text
-                .setValue(this.plugin.settings.desktopColumns.toString())
-                .setPlaceholder('1-4')
+            .setName('Minimum Width Percentage')
+            .setDesc('Set the minimum width percentage for the NuMenu view')
+            .addSlider(slider => slider
+                .setLimits(10, 50, 5)
+                .setValue(this.plugin.settings.minWidthPercentage)
                 .onChange(async (value) => {
-                    const numValue = parseInt(value);
-                    if (!isNaN(numValue) && numValue >= 1 && numValue <= 4) {
-                        this.plugin.settings.desktopColumns = numValue;
-                        await this.plugin.saveSettings();
-                    }
-                }));
-
-        new Setting(containerEl)
-            .setName('Tablet Columns')
-            .setDesc('Number of columns to display in the NuMenu view on tablet (1-4)')
-            .addText(text => text
-                .setValue(this.plugin.settings.tabletColumns.toString())
-                .setPlaceholder('1-4')
-                .onChange(async (value) => {
-                    const numValue = parseInt(value);
-                    if (!isNaN(numValue) && numValue >= 1 && numValue <= 4) {
-                        this.plugin.settings.tabletColumns = numValue;
-                        await this.plugin.saveSettings();
-                    }
-                }));
-
-        new Setting(containerEl)
-            .setName('Phone Columns')
-            .setDesc('Number of columns to display in the NuMenu view on phone (1-4)')
-            .addText(text => text
-                .setValue(this.plugin.settings.phoneColumns.toString())
-                .setPlaceholder('1-4')
-                .onChange(async (value) => {
-                    const numValue = parseInt(value);
-                    if (!isNaN(numValue) && numValue >= 1 && numValue <= 4) {
-                        this.plugin.settings.phoneColumns = numValue;
-                        await this.plugin.saveSettings();
+                    this.plugin.settings.minWidthPercentage = value;
+                    await this.plugin.saveSettings();
+                    const view = this.app.workspace.getLeavesOfType(VIEW_TYPE_NuMenu)[0]?.view as NuMenuView;
+                    if (view) {
+                        view.applyMinWidthSetting();
                     }
                 }));
     }
